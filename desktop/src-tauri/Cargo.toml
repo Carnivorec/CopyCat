@@ -1,0 +1,40 @@
+[package]
+name = "copycat-desktop"
+description = "CopyCat Windows 桌面应用"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lib]
+name = "copycat_desktop"
+path = "src/lib.rs"
+
+[[bin]]
+name = "copycat-desktop"
+path = "src/main.rs"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+copycat-app.workspace = true
+copycat-core.workspace = true
+copycat-crypto.workspace = true
+tauri = { version = "2", features = ["tray-icon", "image-png"] }
+tauri-plugin-single-instance = "2"
+tauri-plugin-autostart = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+tauri-plugin-global-shortcut = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-opener = "2"
+
+[target.'cfg(windows)'.dependencies]
+copycat-win.workspace = true
+tauri-winrt-notification = "0.8"
+
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "gif", "bmp", "webp"] }

@@ -1,0 +1,25 @@
+[package]
+name = "copycat-app"
+description = "CopyCat 应用业务层：设置、界面数据结构、节点生命周期与界面命令，供桌面端与安卓守护进程共用"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+copycat-core.workspace = true
+copycat-crypto.workspace = true
+copycat-store.workspace = true
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio.workspace = true
+tracing.workspace = true
+hex.workspace = true
+data-encoding.workspace = true
+qrcode = { version = "0.14", default-features = false }
+
+[dev-dependencies]
+tempfile = "3"
+
+[lints]
+workspace = true

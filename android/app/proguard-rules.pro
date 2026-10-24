@@ -1,0 +1,2 @@
+-keep class app.copycat.daemon.** { *; }
+-keepclasseswithmembernames class * { native <methods>; }

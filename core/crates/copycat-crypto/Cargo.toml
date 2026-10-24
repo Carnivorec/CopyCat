@@ -1,0 +1,25 @@
+[package]
+name = "copycat-crypto"
+description = "CopyCat 密码学：设备身份、名册、Noise 会话、配对、离线信箱"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+copycat-proto.workspace = true
+prost.workspace = true
+snow.workspace = true
+ed25519-dalek.workspace = true
+blake3.workspace = true
+zeroize.workspace = true
+getrandom.workspace = true
+thiserror.workspace = true
+data-encoding.workspace = true
+chacha20poly1305 = "0.11"
+
+[dev-dependencies]
+proptest.workspace = true
+
+[lints]
+workspace = true

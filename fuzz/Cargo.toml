@@ -1,0 +1,87 @@
+[package]
+name = "copycat-fuzz"
+description = "CopyCat 模糊测试目标（cargo-fuzz / libFuzzer），覆盖所有解析不可信输入的代码"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+copycat-proto = { path = "../core/crates/copycat-proto" }
+copycat-crypto = { path = "../core/crates/copycat-crypto" }
+copycat-sync = { path = "../core/crates/copycat-sync" }
+copycat-core = { path = "../core/crates/copycat-core" }
+copycat-transport = { path = "../core/crates/copycat-transport" }
+copycat-win = { path = "../platform/win" }
+
+[workspace]
+members = ["."]
+
+[profile.release]
+debug = 1
+
+[[bin]]
+name = "frames"
+path = "fuzz_targets/frames.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "app_engine"
+path = "fuzz_targets/app_engine.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "session"
+path = "fuzz_targets/session.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "mailbox"
+path = "fuzz_targets/mailbox.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "roster"
+path = "fuzz_targets/roster.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "pairing_uri"
+path = "fuzz_targets/pairing_uri.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "file_names"
+path = "fuzz_targets/file_names.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "clipboard_formats"
+path = "fuzz_targets/clipboard_formats.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "beacon"
+path = "fuzz_targets/beacon.rs"
+test = false
+doc = false
+bench = false

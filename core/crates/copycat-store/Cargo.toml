@@ -1,0 +1,19 @@
+[package]
+name = "copycat-store"
+description = "CopyCat 本地存储：SQLite + 字段级加密"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+copycat-proto.workspace = true
+copycat-crypto.workspace = true
+copycat-sync.workspace = true
+prost.workspace = true
+zeroize.workspace = true
+thiserror.workspace = true
+rusqlite = { version = "0.40", features = ["bundled"] }
+
+[lints]
+workspace = true

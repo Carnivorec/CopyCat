@@ -1,0 +1,25 @@
+services:
+  relay:
+    image: ghcr.io/carnivorec/copycat-relay:latest
+    container_name: copycat-relay
+    restart: unless-stopped
+
+    init: true
+    environment:
+      COPYCAT_RELAY_KEY: ""
+    ports:
+
+      - "${COPYCAT_PORT:-8443}:8443/udp"
+      - "${COPYCAT_PORT:-8443}:8443/tcp"
+    volumes:
+      - ./data:/data
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 128m
+    pids_limit: 256
+    ulimits:
+      nofile: 65536
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }

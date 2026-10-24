@@ -1,0 +1,26 @@
+[package]
+name = "copycat-relay"
+description = "CopyCat 中转服务器：设备认证、密文帧路由、离线信箱"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+copycat-proto.workspace = true
+copycat-crypto.workspace = true
+copycat-transport.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+anyhow.workspace = true
+blake3.workspace = true
+data-encoding.workspace = true
+tokio-rustls = { version = "0.26", default-features = false, features = ["ring", "tls12"] }
+quinn = { version = "0.11", default-features = false, features = ["rustls-ring", "runtime-tokio", "log"] }
+
+[dev-dependencies]
+copycat-sync.workspace = true
+
+[lints]
+workspace = true

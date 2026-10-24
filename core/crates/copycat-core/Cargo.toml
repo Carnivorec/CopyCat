@@ -1,0 +1,27 @@
+[package]
+name = "copycat-core"
+description = "CopyCat 节点：把身份、名册、同步引擎、存储、中转连接与加密会话组装在一起"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+copycat-proto.workspace = true
+copycat-crypto.workspace = true
+copycat-sync.workspace = true
+copycat-store.workspace = true
+copycat-transport.workspace = true
+prost.workspace = true
+blake3.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+thiserror.workspace = true
+quinn = { version = "0.11", default-features = false, features = ["rustls-ring", "runtime-tokio", "log"] }
+
+[dev-dependencies]
+copycat-relay = { path = "../../../relay" }
+tracing-subscriber.workspace = true
+
+[lints]
+workspace = true

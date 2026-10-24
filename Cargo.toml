@@ -1,0 +1,45 @@
+[workspace]
+resolver = "3"
+members = ["core/crates/*", "relay", "platform/*", "cli", "desktop/src-tauri"]
+
+[workspace.package]
+version = "0.2.1"
+edition = "2024"
+license = "AGPL-3.0-only"
+publish = false
+
+[workspace.dependencies]
+copycat-proto = { path = "core/crates/copycat-proto" }
+copycat-crypto = { path = "core/crates/copycat-crypto" }
+copycat-sync = { path = "core/crates/copycat-sync" }
+copycat-store = { path = "core/crates/copycat-store" }
+copycat-transport = { path = "core/crates/copycat-transport" }
+copycat-core = { path = "core/crates/copycat-core" }
+copycat-app = { path = "core/crates/copycat-app" }
+copycat-win = { path = "platform/win" }
+copycat-android = { path = "platform/android" }
+
+prost = "0.14"
+bytes = "1"
+snow = "0.10"
+ed25519-dalek = "3.0.0"
+blake3 = "1.8"
+zeroize = { version = "1.9", features = ["derive"] }
+getrandom = "0.4"
+thiserror = "2"
+data-encoding = "2.11"
+uuid = { version = "1.27", features = ["v7"] }
+proptest = "1.11"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tokio = { version = "1.53", features = ["full"] }
+anyhow = "1"
+hex = "0.4"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true

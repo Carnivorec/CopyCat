@@ -1,0 +1,32 @@
+[package]
+name = "copycat-android"
+description = "CopyCat 安卓守护进程的原生部分：业务层、界面命令分发、网络变化监听（经 JNI 供 app_process 中的 Java 层调用）"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lib]
+name = "copycat"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+copycat-app.workspace = true
+copycat-core.workspace = true
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+jni = "0.21"
+
+[target.'cfg(any(target_os = "android", target_os = "linux"))'.dependencies]
+netlink-sys = "0.9"
+inotify = { version = "0.11", default-features = false }
+libc = "0.2"
+
+[dev-dependencies]
+tempfile = "3"
+
+[lints.rust]
+unsafe_op_in_unsafe_fn = "deny"

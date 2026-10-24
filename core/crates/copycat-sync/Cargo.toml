@@ -1,0 +1,20 @@
+[package]
+name = "copycat-sync"
+description = "CopyCat 同步引擎：HLC、可靠投递、补发、LWW 裁决、回环抑制（与传输无关）"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+copycat-proto.workspace = true
+copycat-crypto.workspace = true
+blake3.workspace = true
+uuid.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+
+[lints]
+workspace = true
