@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Copy, FolderOpen, Keyboard, Laptop, LogOut, Monitor, Plus, Search, Smartphone, Trash2, X } from "lucide-react";
 import { useApp } from "./App";
-import type { Clip, Device, RelaySetup, Settings } from "./api";
+import type { Clip, Device, Firewall, RelaySetup, Settings } from "./api";
 import { fmtSize, fmtTime, isCJK, KIND_LABEL, otpDigits } from "./format";
 import { useFlip, useNudge, useSwipe } from "./motion";
 import { mo, P } from "./spring";
@@ -368,6 +368,49 @@ function QrCode({ matrix }: { matrix: string[] }) {
   );
 }
 
+function FirewallNote() {
+  const { api, toast } = useApp();
+  const [fw, setFw] = useState<Firewall | null>(null);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    api.firewall().then(setFw, () => {});
+  }, [api]);
+  if (!fw || fw.state === "open") return null;
+  const all = fw.state === "blockAll";
+  return (
+    <div className="fw">
+      <div>
+        <b>{all ? "当前网络阻止所有传入连接" : "Windows 防火墙会拦下其他设备"}</b>
+        <span>
+          {all
+            ? "请在“Windows 安全中心 → 防火墙和网络保护”中取消“阻止所有传入连接”，或先配置中转服务器。"
+            : "同一局域网内的设备也连不上本机。放行仅对 CopyCat 生效。"}
+        </span>
+      </div>
+      {!all && (
+        <button
+          className="btn-ghost"
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            try {
+              const r = await api.allowFirewall();
+              setFw(r);
+              if (r.state === "open") toast("已放行，同一局域网内的设备可以直接连接");
+            } catch (e) {
+              if (String(e) !== "已取消") toast(String(e));
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          {busy ? "等待确认…" : "放行"}
+        </button>
+      )}
+    </div>
+  );
+}
+
 function InvitePanel() {
   const { api, toast } = useApp();
   const [inv, setInv] = useState<{ uri: string; matrix: string[]; at: number } | null>(null);
@@ -436,6 +479,7 @@ function InvitePanel() {
           电脑：复制下面的配对码，在新电脑上选择“加入设备组”并粘贴。<br />
           对方连上后，这里会弹出确认码，请核对两边一致再同意。
         </p>
+        <FirewallNote />
         <div className="ttl" ref={bar} />
         <div className="ttl-label">
           <span>剩余 {left} 秒</span>

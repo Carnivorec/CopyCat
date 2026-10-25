@@ -12,7 +12,7 @@ use copycat_transport::lan::{self as tlan, LanConn, LanEndpoint};
 use copycat_transport::relay_client::{self, AuthMode, RelayAddr, RelayEvent, RelayHandle};
 use copycat_transport::tls::client_endpoint;
 use tokio::sync::mpsc;
-use tracing::info;
+use tracing::{info, warn};
 
 use crate::link::frame;
 use crate::{CoreError, Node, NodeConfig, NodeEvent, RelayConf, Result, now_ms, save_relay};
@@ -84,7 +84,11 @@ async fn dial_lan(addrs: &[SocketAddr], loopback: bool) -> Option<Channel> {
     for a in addrs {
         let (ep, tx, a) = (ep.clone(), tx.clone(), *a);
         tokio::spawn(async move {
-            let _ = tx.send(ep.connect(a, LAN_DIAL).await).await;
+            let r = ep.connect(a, LAN_DIAL).await;
+            if let Err(e) = &r {
+                warn!(addr = %a, error = %e, "局域网内连不上邀请方");
+            }
+            let _ = tx.send(r).await;
         });
     }
     drop(tx);
@@ -175,6 +179,7 @@ pub(crate) async fn join(
 
     let lan = if cfg.lan.enabled { lan_addrs(&invite, cfg.lan.loopback_for_tests) } else { Vec::new() };
     let invite_relay = invite.relay.clone().zip(invite.relay_key).map(|(addr, key)| RelayAddr { addr, key });
+    info!(lan = ?lan, relay = invite_relay.is_some(), "开始配对");
     let mut ch = match dial_lan(&lan, cfg.lan.loopback_for_tests).await {
         Some(ch) => ch,
         None => match dial_relay(&invite, &cfg).await? {

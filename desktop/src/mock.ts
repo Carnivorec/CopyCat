@@ -1,6 +1,7 @@
-import type { Api, Clip, Device, Events, Kind, Overview, Settings, Transfer } from "./api";
+import type { Api, Clip, Device, Events, Firewall, Kind, Overview, Settings, Transfer } from "./api";
 
 const q = new URLSearchParams(location.search);
+let fw = (q.get("fw") ?? "open") as Firewall["state"];
 const listeners = new Map<string, Set<(p: unknown) => void>>();
 function emit<E extends keyof Events>(e: E, p: Events[E]) {
   listeners.get(e)?.forEach((cb) => cb(p));
@@ -305,6 +306,12 @@ export function mockApi(): Api {
       emit("cc:changed", "settings");
     },
     networkChanged: async () => {},
+    firewall: async () => ({ state: fw, public: fw !== "open" }),
+    allowFirewall: async () => {
+      await sleep(900);
+      if (fw !== "blockAll") fw = "open";
+      return { state: fw, public: true };
+    },
     summarize: async (paths) => {
       await sleep(120);
       return { count: paths.length * 3 - 1, total: paths.length * 71.3 * MB };

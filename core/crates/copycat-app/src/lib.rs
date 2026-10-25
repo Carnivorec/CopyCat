@@ -572,6 +572,7 @@ impl<H: Host> Service<H> {
                 Ok(())
             }
             Err(e) => {
+                warn!(error = %e, "加入设备组失败");
                 self.wipe_store();
                 Err(match e {
                     CoreError::Crypto(_) => "配对码无效或已过期，请在已加入的设备上重新生成".to_owned(),

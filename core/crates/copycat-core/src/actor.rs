@@ -725,6 +725,7 @@ impl Actor {
                 }))
                 .await?;
         }
+        info!(lan = ?invite.lan, relay = relay.is_some(), "已生成配对邀请");
         self.invite = Some(Invite {
             secret: invite.secret.clone(),
             expires: Instant::now() + Duration::from_secs(u64::from(PAIR_TTL_SECS)),
@@ -1591,6 +1592,7 @@ impl Actor {
         }
         match (f.kind, inv.joiner.take()) {
             (Some(Kind::PairInit(m1)), None) => {
+                info!(via = ?via, "收到配对请求");
                 let Some(own) = self.roster.member(&self.me).cloned() else { return };
                 match pairing::respond(&self.identity, &own, &inv.secret, &m1) {
                     Ok((pending, m2)) => {

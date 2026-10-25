@@ -706,6 +706,11 @@ Section Uninstall
 
   !insertmacro CheckIfAppIsRunning "$INSTDIR\${MAINBINARYNAME}.exe" "${PRODUCTNAME}"
 
+  ${If} $UpdateMode <> 1
+  ${AndIfNot} ${Silent}
+    ExecWait '"$INSTDIR\${MAINBINARYNAME}.exe" --firewall remove' $0
+  ${EndIf}
+
   Delete "$INSTDIR\${MAINBINARYNAME}.exe"
 
   {{#each resources}}

@@ -1,5 +1,6 @@
 mod bridge;
 mod commands;
+pub mod firewall;
 mod host;
 mod logfile;
 mod netwatch;
@@ -32,6 +33,7 @@ fn init(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
             tracing::warn!(error = %e, "启动节点失败");
         }
         tauri::async_runtime::spawn(netwatch::run(svc.clone()));
+        tauri::async_runtime::spawn_blocking(firewall::log_status);
         bridge::run(svc, changes).await;
         tracing::error!("剪贴板桥接任务意外结束，本机复制不再同步");
     });
@@ -101,6 +103,8 @@ pub fn run() {
             commands::set_paused,
             commands::save_settings,
             commands::network_changed,
+            firewall::firewall_status,
+            firewall::firewall_allow,
             commands::transfers,
             commands::summarize,
             commands::send_paths,

@@ -7,6 +7,8 @@ pub mod dpapi;
 #[cfg(windows)]
 pub mod explorer;
 #[cfg(windows)]
+pub mod firewall;
+#[cfg(windows)]
 pub mod masterkey;
 #[cfg(windows)]
 pub mod time;

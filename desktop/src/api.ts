@@ -96,6 +96,11 @@ export interface RelaySetup {
   compose: string;
 }
 
+export interface Firewall {
+  state: "open" | "noRule" | "blocked" | "blockAll";
+  public: boolean;
+}
+
 export interface PairRequest {
   name: string;
   platform: Platform;
@@ -146,6 +151,8 @@ export interface Api {
   setPaused(paused: boolean): Promise<void>;
   saveSettings(settings: Settings): Promise<void>;
   networkChanged(): Promise<void>;
+  firewall(): Promise<Firewall>;
+  allowFirewall(): Promise<Firewall>;
   summarize(paths: string[]): Promise<{ count: number; total: number }>;
   sendPaths(device: string, paths: string[]): Promise<string>;
   cancelTransfer(id: string): Promise<void>;
@@ -194,6 +201,8 @@ async function tauriApi(): Promise<Api> {
     setPaused: (paused) => invoke("set_paused", { paused }),
     saveSettings: (settings) => invoke("save_settings", { settings }),
     networkChanged: () => invoke("network_changed"),
+    firewall: () => invoke("firewall_status"),
+    allowFirewall: () => invoke("firewall_allow"),
     summarize: (paths) => invoke("summarize", { paths }),
     sendPaths: (device, paths) => invoke("send_paths", { device, paths }),
     cancelTransfer: (id) => invoke("cancel_transfer", { id }),
