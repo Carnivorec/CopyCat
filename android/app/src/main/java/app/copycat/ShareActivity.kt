@@ -14,6 +14,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.lifecycleScope
 import app.copycat.ui.ShareSheet
 import app.copycat.ui.ShareState
+import app.copycat.ui.names
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -70,39 +71,57 @@ class ShareActivity : ComponentActivity() {
         val ready = ShareState.Pick(ov)
         state.value = ready
         val only = ov.others.singleOrNull()
-        if (only != null && only.online && !ready.needsConfirm(payload, only)) send(payload, only)
+        if (only != null && only.online && !ready.needsConfirm(payload, only)) send(payload, listOf(only))
     }
 
-    private fun send(payload: Payload, target: Device) {
+    private fun send(payload: Payload, targets: List<Device>) {
         val pick = state.value as? ShareState.Pick ?: return
-        if (pick.needsConfirm(payload, target) && pick.confirming != target.id) {
-            state.value = pick.copy(confirming = target.id, error = null)
+        val ids = targets.map { it.id }.toSet()
+        if (targets.any { pick.needsConfirm(payload, it) } && !(pick.confirming && pick.selected == ids)) {
+            state.value = pick.copy(selected = ids, confirming = true, error = null)
             return
         }
-        state.value = ShareState.Sending(target.name)
+        state.value = ShareState.Sending(names(targets))
         lifecycleScope.launch {
-            try {
-                when (payload) {
-                    is Payload.Text -> DaemonClient.request("shareText", "device" to target.id, "text" to payload.text)
-                    is Payload.Files -> {
-                        val fds = withContext(Dispatchers.IO) {
-                            val opened = mutableListOf<Pair<String, android.os.ParcelFileDescriptor>>()
-                            try {
-                                for (item in payload.items) opened += item.name to open(item)
-                            } catch (e: Exception) {
-                                opened.forEach { runCatching { it.second.close() } }
-                                throw e
-                            }
-                            opened
-                        }
-                        DaemonClient.sendFiles(target.id, fds)
-                    }
+            val ok = mutableListOf<Device>()
+            val failed = mutableListOf<Device>()
+            val errors = mutableListOf<String>()
+            for (t in targets) {
+                try {
+                    sendTo(payload, t)
+                    ok += t
+                } catch (e: Exception) {
+                    failed += t
+                    val msg = e.message ?: "发送失败"
+                    errors += if (targets.size > 1) "${t.name}：$msg" else msg
                 }
-                state.value = ShareState.Sent(target.name)
+            }
+            if (failed.isEmpty()) {
+                state.value = ShareState.Sent(names(ok))
                 delay(900)
                 finish()
-            } catch (e: Exception) {
-                state.value = pick.copy(confirming = null, error = e.message ?: "发送失败")
+                return@launch
+            }
+            val done = if (ok.isEmpty()) "" else "已开始发送给 ${names(ok)}。"
+            state.value = pick.copy(selected = failed.map { it.id }.toSet(), confirming = false, error = done + errors.joinToString("；"))
+        }
+    }
+
+    private suspend fun sendTo(payload: Payload, target: Device) {
+        when (payload) {
+            is Payload.Text -> DaemonClient.request("shareText", "device" to target.id, "text" to payload.text)
+            is Payload.Files -> {
+                val fds = withContext(Dispatchers.IO) {
+                    val opened = mutableListOf<Pair<String, android.os.ParcelFileDescriptor>>()
+                    try {
+                        for (item in payload.items) opened += item.name to open(item)
+                    } catch (e: Exception) {
+                        opened.forEach { runCatching { it.second.close() } }
+                        throw e
+                    }
+                    opened
+                }
+                DaemonClient.sendFiles(target.id, fds)
             }
         }
     }

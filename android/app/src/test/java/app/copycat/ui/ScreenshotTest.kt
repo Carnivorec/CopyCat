@@ -227,7 +227,8 @@ class ScreenshotTest {
     }
 
     @Test fun shareFiles() = shareShot("share-files", files, ShareState.Pick(ov))
-    @Test fun shareConfirm() = shareShot("share-confirm", files, ShareState.Pick(ov, confirming = "nb"))
+    @Test fun shareMulti() = shareShot("share-multi", files, ShareState.Pick(ov, selected = setOf("pc", "nb")))
+    @Test fun shareConfirm() = shareShot("share-confirm", files, ShareState.Pick(ov, selected = setOf("nb"), confirming = true))
     @Test fun shareText() = shareShot("share-text", Payload.Text("【这个视频太好笑了】 https://example.com/xYz9aBc 复制此链接，打开哔哩哔哩"), ShareState.Pick(ov))
     @Test fun shareSent() = shareShot("share-sent", files, ShareState.Sent("台式机"))
     @Test fun shareError() = shareShot("share-error", files, ShareState.Error("这台手机还没有加入设备组，请先打开 CopyCat 完成配对"))

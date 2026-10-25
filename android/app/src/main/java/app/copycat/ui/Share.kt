@@ -45,7 +45,12 @@ import app.copycat.Payload
 sealed interface ShareState {
     data object Loading : ShareState
     data class Error(val message: String) : ShareState
-    data class Pick(val ov: Overview, val confirming: String? = null, val error: String? = null) : ShareState {
+    data class Pick(
+        val ov: Overview,
+        val selected: Set<String>? = null,
+        val confirming: Boolean = false,
+        val error: String? = null,
+    ) : ShareState {
 
         fun needsConfirm(p: Payload, d: Device): Boolean {
             val mb = ov.settings.relayConfirmMb
@@ -56,6 +61,8 @@ sealed interface ShareState {
     data class Sent(val device: String) : ShareState
 }
 
+fun names(ds: List<Device>): String = ds.joinToString("、") { it.name }
+
 fun fmtSize(n: Long): String = when {
     n < 0 -> "大小未知"
     n < 1024 -> "$n B"
@@ -65,7 +72,7 @@ fun fmtSize(n: Long): String = when {
 }
 
 @Composable
-fun ShareSheet(payload: Payload, state: ShareState, onSend: (Device) -> Unit, onClose: () -> Unit) {
+fun ShareSheet(payload: Payload, state: ShareState, onSend: (List<Device>) -> Unit, onClose: () -> Unit) {
     BackHandler(onBack = onClose)
     val rise = remember { Animatable(1f) }
     LaunchedEffect(Unit) { rise.animateTo(0f, S.bouncy()) }
@@ -145,20 +152,26 @@ private fun Summary(p: Payload) {
 }
 
 @Composable
-private fun Picker(payload: Payload, s: ShareState.Pick, onSend: (Device) -> Unit) {
+private fun Picker(payload: Payload, s: ShareState.Pick, onSend: (List<Device>) -> Unit) {
     val others = s.ov.others
-    var picked by remember { mutableStateOf(s.confirming ?: others.sortedBy { if (it.lan) 0 else if (it.relay) 1 else 2 }.firstOrNull()?.id) }
-    val target = others.firstOrNull { it.id == picked }
+    var picked by remember(s.selected) {
+        mutableStateOf(s.selected ?: setOfNotNull(others.sortedBy { if (it.lan) 0 else if (it.relay) 1 else 2 }.firstOrNull()?.id))
+    }
+    val targets = others.filter { it.id in picked }
+    val many = others.size > 1
     Column {
         Row(Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
-            Text("发送给", style = T.label, modifier = Modifier.weight(1f))
-            Text("${others.size} DEVICES", style = T.mono)
+            Text(if (many) "发送给（可多选）" else "发送给", style = T.label, modifier = Modifier.weight(1f))
+            Text(if (many) "${targets.size} / ${others.size} SELECTED" else "${others.size} DEVICES", style = T.mono)
         }
         Rule(2.dp)
         if (others.isEmpty()) Text("还没有其他设备，请先在 CopyCat 里添加。", style = T.bodyMute, modifier = Modifier.padding(vertical = 14.dp))
         for (d in others) {
-            val on = d.id == picked
-            Row(Modifier.fillMaxWidth().pressable({ picked = d.id }).padding(vertical = 13.dp), verticalAlignment = Alignment.CenterVertically) {
+            val on = d.id in picked
+            Row(
+                Modifier.fillMaxWidth().pressable({ picked = if (on) picked - d.id else picked + d.id }).padding(vertical = 13.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 Box(Modifier.size(12.dp).background(if (on) C.Red else C.Ink).padding(2.dp).background(if (on) C.Red else C.Paper))
                 Spacer(Modifier.width(12.dp))
                 Text(d.name, style = text(18.sp, 900), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
@@ -171,12 +184,14 @@ private fun Picker(payload: Payload, s: ShareState.Pick, onSend: (Device) -> Uni
             }
             Rule()
         }
-        val confirming = target != null && s.confirming == target.id
+        val confirming = s.confirming && s.selected == picked
+        val relay = targets.filter { s.needsConfirm(payload, it) }
+        val offline = targets.filter { !it.online }
         val note = when {
             s.error != null -> s.error
             confirming -> "只能经中转服务器发送，会占用服务器流量。再点一次确认。"
-            target != null && s.needsConfirm(payload, target) -> "不在同一局域网，将经中转服务器发送。"
-            target != null && !target.online -> "${target.name} 不在线，上线后自动发送（最多等 30 分钟）。"
+            relay.isNotEmpty() -> if (targets.size > 1) "${names(relay)} 不在同一局域网，将经中转服务器发送。" else "不在同一局域网，将经中转服务器发送。"
+            offline.isNotEmpty() -> "${names(offline)} 不在线，上线后自动发送（最多等 30 分钟）。"
             else -> null
         }
         if (note != null) {
@@ -187,12 +202,14 @@ private fun Picker(payload: Payload, s: ShareState.Pick, onSend: (Device) -> Uni
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             PrimaryButton(
                 when {
-                    target == null -> "没有可发送的设备"
+                    others.isEmpty() -> "没有可发送的设备"
+                    targets.isEmpty() -> "选择要发送的设备"
                     confirming -> "确认经中转发送"
-                    else -> "发送给 ${target.name}"
+                    targets.size == 1 -> "发送给 ${targets[0].name}"
+                    else -> "发送给 ${targets.size} 台设备"
                 },
-                { target?.let(onSend) },
-                enabled = target != null,
+                { if (targets.isNotEmpty()) onSend(targets) },
+                enabled = targets.isNotEmpty(),
                 icon = Icons.ArrowRight,
                 modifier = Modifier.fillMaxWidth(),
             )

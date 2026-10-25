@@ -18,13 +18,15 @@ type PanelProps = {
 
   over: boolean;
   compact?: boolean;
-  onSent?(d: Device): void;
+  onSent?(ds: Device[]): void;
 };
+
+const names = (ds: Device[]) => ds.map((d) => d.name).join("、");
 
 export function SendPanel({ paths, setPaths, over, compact, onSent }: PanelProps) {
   const { api, ov } = useApp();
   const others = ov.devices.filter((d) => !d.me);
-  const [picked, setPicked] = useState<string | null>(null);
+  const [picked, setPicked] = useState<Set<string> | null>(null);
   const [sum, setSum] = useState<{ count: number; total: number } | null>(null);
   const [err, setErr] = useState("");
   const [confirm, setConfirm] = useState(false);
@@ -33,7 +35,14 @@ export function SendPanel({ paths, setPaths, over, compact, onSent }: PanelProps
   const go = useRef<HTMLButtonElement>(null);
   useNudge(go, 4);
 
-  const target = others.find((d) => d.id === picked) ?? [...others].sort((a, b) => rank(a) - rank(b))[0] ?? null;
+  const best = [...others].sort((a, b) => rank(a) - rank(b))[0];
+  const targets = picked ? others.filter((d) => picked.has(d.id)) : best ? [best] : [];
+  const toggle = (id: string) => {
+    const next = new Set(targets.map((d) => d.id));
+    if (!next.delete(id)) next.add(id);
+    setPicked(next);
+    setConfirm(false);
+  };
 
   useEffect(() => {
     setConfirm(false);
@@ -55,7 +64,9 @@ export function SendPanel({ paths, setPaths, over, compact, onSent }: PanelProps
   }, [over]);
 
   const limit = ov.settings.relayConfirmMb * MB;
-  const needConfirm = !!(target && sum && !target.lan && ov.settings.relayConfirmMb > 0 && sum.total > limit);
+  const viaRelay = targets.filter((d) => !d.lan);
+  const offline = targets.filter((d) => !d.lan && !d.relay);
+  const needConfirm = !!(sum && viaRelay.length && ov.settings.relayConfirmMb > 0 && sum.total > limit);
 
   const add = async () => {
     const more = await api.pickFiles().catch(() => []);
@@ -63,27 +74,44 @@ export function SendPanel({ paths, setPaths, over, compact, onSent }: PanelProps
   };
 
   const send = async () => {
-    if (!target || !sum) return;
+    if (!targets.length || !sum) return;
     if (needConfirm && !confirm) return setConfirm(true);
     setBusy(true);
-    try {
-      await api.sendPaths(target.id, paths);
-      setPaths([]);
-      onSent?.(target);
-    } catch (e) {
-      setErr(String(e));
-    } finally {
-      setBusy(false);
+    const ok: Device[] = [];
+    const failed: string[] = [];
+    for (const d of targets) {
+      try {
+        await api.sendPaths(d.id, paths);
+        ok.push(d);
+      } catch (e) {
+        failed.push(targets.length > 1 ? `${d.name}：${String(e)}` : String(e));
+      }
     }
+    setBusy(false);
+    if (!failed.length) {
+      setPaths([]);
+      setPicked(null);
+      onSent?.(ok);
+      return;
+    }
+    setPicked(new Set(targets.filter((d) => !ok.includes(d)).map((d) => d.id)));
+    setConfirm(false);
+    setErr((ok.length ? `已开始发送给 ${names(ok)}。` : "") + failed.join("；"));
   };
 
-  const label = !target
+  const one = targets.length === 1 ? targets[0] : null;
+  const label = !others.length
     ? "没有可发送的设备"
-    : confirm
-      ? `确认经中转发送 ${sum ? fmtSize(sum.total) : ""}`
-      : target.lan || target.relay
-        ? `发送给 ${target.name}`
-        : `等 ${target.name} 上线后发送`;
+    : !targets.length
+      ? "选择要发送的设备"
+      : confirm
+        ? `确认经中转发送 ${sum ? fmtSize(sum.total) : ""}`
+        : !one
+          ? `发送给 ${targets.length} 台设备`
+          : one.lan || one.relay
+            ? `发送给 ${one.name}`
+            : `等 ${one.name} 上线后发送`;
+  const plural = targets.length > 1;
 
   return (
     <div className={`send ${compact ? "compact" : ""}`}>
@@ -117,16 +145,18 @@ export function SendPanel({ paths, setPaths, over, compact, onSent }: PanelProps
         )}
       </div>
       <div className="targets">
-        <h4><span>发送给</span><span className="mono">{others.length} {others.length === 1 ? "DEVICE" : "DEVICES"}</span></h4>
+        <h4>
+          <span>发送给{others.length > 1 ? "（可多选）" : ""}</span>
+          <span className="mono">{others.length > 1 ? `${targets.length} / ${others.length} SELECTED` : `${others.length} ${others.length === 1 ? "DEVICE" : "DEVICES"}`}</span>
+        </h4>
         <div className="target-list">
           {others.map((d) => (
             <button
               key={d.id}
-              className={`target ${d.id === target?.id ? "on" : ""}`}
-              onClick={() => {
-                setPicked(d.id);
-                setConfirm(false);
-              }}
+              className={`target ${targets.includes(d) ? "on" : ""}`}
+              role="checkbox"
+              aria-checked={targets.includes(d)}
+              onClick={() => toggle(d.id)}
             >
               <span className="sq" />
               <b>{d.name}</b>
@@ -140,9 +170,11 @@ export function SendPanel({ paths, setPaths, over, compact, onSent }: PanelProps
         ) : confirm ? (
           <div className="send-note warn">只能经中转服务器发送，会占用服务器流量。再点一次确认。</div>
         ) : needConfirm ? (
-          <div className="send-note">不在同一局域网，将经中转服务器发送。</div>
+          <div className="send-note">{plural ? `${names(viaRelay)} 不在同一局域网，将经中转服务器发送。` : "不在同一局域网，将经中转服务器发送。"}</div>
+        ) : plural && offline.length ? (
+          <div className="send-note">{names(offline)} 不在线，上线后自动发送。</div>
         ) : null}
-        <button ref={go} className={`btn-primary send-go ${confirm ? "confirm" : ""}`} disabled={!target || !sum || busy} onClick={send}>
+        <button ref={go} className={`btn-primary send-go ${confirm ? "confirm" : ""}`} disabled={!targets.length || !sum || busy} onClick={send}>
           <span>{label}</span>
           <ArrowRight />
         </button>
@@ -240,7 +272,7 @@ export function TransferPage() {
         <span className="mono">{hotkey ? `${hotkey} 随时发送` : ""}</span>
       </div>
       <h1 className="page-title" style={{ marginTop: 14 }}>传输</h1>
-      <SendPanel compact paths={pending} setPaths={setPending} over={over} onSent={(d) => toast(`正在发送给 ${d.name}`)} />
+      <SendPanel compact paths={pending} setPaths={setPending} over={over} onSent={(ds) => toast(`正在发送给 ${names(ds)}`)} />
       <div className="list-head xfer-head">
         <span>No.</span>
         <span>内容</span>
@@ -349,7 +381,7 @@ export function SendApp() {
               <button className="btn-ghost" onClick={() => api.showMain()}>打开主窗口</button>
             </div>
           ) : (
-            <SendPanel paths={paths} setPaths={setPaths} over={over} onSent={(d) => setSent(d.name)} />
+            <SendPanel paths={paths} setPaths={setPaths} over={over} onSent={(ds) => setSent(names(ds))} />
           )}
         </div>
         <Toast bind={toastRef} />
